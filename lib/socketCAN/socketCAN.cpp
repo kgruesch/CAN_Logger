@@ -11,12 +11,12 @@ void CAN_start(int version)
 {   gpio_num_t GPIO_TX;
     gpio_num_t GPIO_RX;
     gpio_num_t CAN_enable;
-    GPIO_TX = (version == 1) ? GPIO_NUM_8 : GPIO_NUM_13;
+    GPIO_TX = (version == 1) ? GPIO_NUM_8 : GPIO_NUM_13; //switch inputs based on board version
     GPIO_RX = (version == 1) ? GPIO_NUM_9 : GPIO_NUM_12;
     CAN_enable = (version == 1) ? GPIO_NUM_7 : GPIO_NUM_1;
     GPIO_OUTPUT_SET(CAN_enable, 0);
     delay(150);
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_TX, GPIO_RX, TWAI_MODE_NORMAL); //change to 12 tx, 13 rx
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_TX, GPIO_RX, TWAI_MODE_NORMAL); 
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
