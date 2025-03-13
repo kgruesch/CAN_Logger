@@ -26,7 +26,7 @@ void setup() {
   adcAttachPin(IAT_pin);
   delay(800);
   Serial.println("Serial on");
-  CAN_start(2);
+  CAN_start(2); //switch TX/RX/enable based on board version, see socketCAN.cpp
   Serial.println("CAN started");
   neopixelWrite(21, BLUE);
   delay(800);
@@ -38,6 +38,9 @@ void loop()
   uint32_t IAT_volts = analogReadMilliVolts(IAT_pin);
   twai_message_t message;
   int interval = logger.ID_all? 50 : 5; // Slow down logging when pulling all frames, speed up for single frame logging
+
+  /// Type * to log all frames, or type a frame ID in hex (not case sensitive,format "0F3" or "0f3" for example) to log that frame only
+  /// spacebar starts and stops the logger
   if (twai_receive(&message, pdMS_TO_TICKS(1)) == ESP_OK) {
     std::vector <int> CANframe(message.data_length_code);
       for (int i = 0; i < message.data_length_code; i++) {
@@ -60,6 +63,7 @@ void loop()
         int trash = Serial.read();
     }
     else {
+      logger.ID_all = false;
       logger.ID = loggerID(val); // Type a frame ID in hex to log that frame only
     }
   }
