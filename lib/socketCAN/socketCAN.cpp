@@ -7,16 +7,16 @@
 #include "TX_RX.h"
 #include "drive_mode.h"
 
-void CAN_start(int version) 
+void CAN_start(int version) // arg is board version, some pins change between the 2
 {   gpio_num_t GPIO_TX;
     gpio_num_t GPIO_RX;
     gpio_num_t CAN_enable;
-    GPIO_TX = (version == 1) ? GPIO_NUM_8 : GPIO_NUM_13; //switch inputs based on board version
+    GPIO_TX = (version == 1) ? GPIO_NUM_8 : GPIO_NUM_13;
     GPIO_RX = (version == 1) ? GPIO_NUM_9 : GPIO_NUM_12;
     CAN_enable = (version == 1) ? GPIO_NUM_7 : GPIO_NUM_1;
     GPIO_OUTPUT_SET(CAN_enable, 0);
     delay(150);
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_TX, GPIO_RX, TWAI_MODE_NORMAL); 
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_TX, GPIO_RX, TWAI_MODE_NORMAL); //change to 12 tx, 13 rx
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
@@ -60,7 +60,7 @@ void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data)
             data.throttle = calc/40; // convert to 0-100 u8_t value
             break;
 
-        case modeID: //drive mode, 1Hz subscription
+        case modeID: //drive mode, 1Hz/subscription
             data.modeData = frame[4];
             break;
 
@@ -77,9 +77,20 @@ void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data)
             break;
 
         case ethanolID:
-            data.ethContent = frame[0];
+            data.ethContent = frame[0]; //%
             data.fuelTemp = frame[1] - 40;
             break;
+
+        case accel_yID:
+            data.accel_y = (frame[3] << 8 | frame[2]) *0.008 - 65; // in m/s²
+            break;
+
+        case accel_xID:
+            data.accel_x = (frame[3] << 8 | frame[2]) *0.008 - 65; // in m/s²
+            break;
+
+        case gyroID:
+            data.gyro = (frame[3] << 8 | frame[2]) *0.005 - 163.84; // in degrees/s
     }
 }
 
