@@ -2,6 +2,8 @@
 #define CAN_DATA_H // 
 
 #include "drive_mode.h"
+#include <vector>
+#include <stdlib.h>
 
 // CAN frame IDs
 #define rpmID       0x0A5 // 16 bit, 2 bytes, rpm = value / 4
@@ -21,6 +23,8 @@
 #define gyroID      0x19F // 16 bits, Bytes 2-3, deg/s = value / 200 - 163.84
 #define IAT_ID      0x2C5 // 16 bits, Bytes 2-3, °C = value / 128 - 40
 #define wheel_spdID 0x254 // 16 bits, Bytes 0-1: LR, bytes 2-3: RR, bytes 4-5: LF, bytes 6-7: RF; rad/s = value / 64 - 511.984
+#define brakeID     0x0EF // 16 bits, Bytes 2-3: Brake % = (32000-value) / 90
+#define MAF_ID      0x08F // 16 bits, Bytes 2-3: MAF = unknown, byte 6: unkknown
 
 // Neopixel colors
 #define red     "#fc0505"
@@ -42,6 +46,8 @@ struct VehicleData {
     int speed {0};
     int ethContent {0};
     int fuelTemp {0};
+    int tachometer {0};
+    int brake {0};
     float accel_y {0};
     float accel_x {0};
     float gyro {0};
@@ -57,6 +63,8 @@ struct Settings {
     int startType               {true};
     int startMode               {SPORT};
     int shift_reminder_ms       {5000};
+    int sendRate                {100};
+    int logRate                 {10};
 };
 
 struct Alerts {
@@ -72,6 +80,14 @@ struct PreviousData {
     int     last_gear {0},
             lastDriveMode {19},  
             lastRPM {0};
+};
+
+struct FrameLogging {
+    std::vector<int> Frames {0x314, 0x302, 0x18D, 0x163, 0x08F, 0x0DC, 0x2C5, 0x2C4, 0x281, 0x0FC};
+    std::vector<int> startByte {2, 2, 0, 4, 2, 3, 2, 5, 0, 1};
+    std::vector<int> size {8, 16, 16, 16, 16, 16, 16, 8, 8, 16};
+    std::vector<int> mask {false, false, true, false, false, false, false, false, false, false};
+    std::vector<int> data {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 };
 
 void CAN_start(int version);

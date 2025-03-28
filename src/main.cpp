@@ -14,9 +14,14 @@ Logging logger;
 int vREF = 5;
 int MAP_pin = GPIO_NUM_4;
 int IAT_pin = GPIO_NUM_5;
+bool frameData = false;
+bool header = false;
 unsigned long timer1 = 0;
+unsigned long timer2 = 0;
 
 VehicleData CANdata;
+Settings settings;
+FrameLogging logFrames;
 
 void setup() {
   neopixelWrite(21, OFF);
@@ -26,6 +31,9 @@ void setup() {
   adcAttachPin(IAT_pin);
   delay(800);
   Serial.println("Serial on");
+  Serial.print("log Rate set to: ");
+  Serial.print(settings.logRate);
+  Serial.println(" ms");
   CAN_start(2); //switch TX/RX/enable based on board version, see socketCAN.cpp
   Serial.println("CAN started");
   neopixelWrite(21, BLUE);
@@ -37,7 +45,6 @@ void loop()
   uint32_t MAP_volts = analogReadMilliVolts(MAP_pin); //input has 10k/10k voltage divider, range is 0.25 to 2.5 volts
   uint32_t IAT_volts = analogReadMilliVolts(IAT_pin);
   twai_message_t message;
-  int interval = logger.ID_all? 50 : 5; // Slow down logging when pulling all frames, speed up for single frame logging
 
   /// Type * to log all frames, or type a frame ID in hex (not case sensitive,format "0F3" or "0f3" for example) to log that frame only
   /// spacebar starts and stops the logger
@@ -48,65 +55,131 @@ void loop()
       }
     CANUpdate(message.identifier, CANframe, CANdata);
       
-  if (Serial.available() > 0 ) {
-    int val = Serial.read();
+    if (Serial.available() > 0 ) {
+      int val = Serial.read();
+      Serial.println("Console input received");
 
-    if (val == 32) {//spacebar starts and stops the logger
-      logger.logger = !logger.logger; //toggle logger on space bar entry
-      logger.logger? neopixelWrite(21, GREEN) : neopixelWrite(21, OFF);
-      while (Serial.available() > 0 ) //empty the buffer
-      int trash = Serial.read();
-    }
-    else if (val == 42) { // type * to log all frames 
-      logger.ID_all = true;
-      while (Serial.available() > 0 ) //empty the buffer
+      if (val == 32) {//spacebar starts and stops the logger
+        logger.logger = !logger.logger; //toggle logger on space bar entry
+        logger.logger? Serial.println("Logger on") : Serial.println("Logger off");
+        delay(500);
+        logger.logger? neopixelWrite(21, GREEN) : neopixelWrite(21, OFF);
+        while (Serial.available() > 0 ) //empty the buffer
         int trash = Serial.read();
-    }
-    else {
-      logger.ID_all = false;
-      logger.ID = loggerID(val); // Type a frame ID in hex to log that frame only
-    }
-  }
-  if (logger.logger && (message.identifier == logger.ID | logger.ID_all)) {
-    if (millis() - timer1 > interval) {
-      timer1 = millis();
-    double time = millis() / 10;
-    time = round(time);
-    time = time/100;
-    Serial.print(time);
-    Serial.print("  ");
-    Serial.print("ID: ");
-    Serial.print("0x");
-    Serial.print(message.identifier, HEX);
-    Serial.print("\t");
-    for(int i=0;i<8;i++) 
-    { 
-      Serial.print("  ");
-      if (i >= message.data_length_code) {
-        Serial.print("X");
+      }
+      else if (val == 42) { // type "*" to log all frames 
+        logger.ID_all = true;
+        Serial.print("Logging all frames");
+        delay(500);
+        settings.logRate < 20? settings.logRate = 20 : settings.logRate;
+        while (Serial.available() > 0 ) //empty the buffer
+          int trash = Serial.read();
+      }
+      else if (val == 35) { // type "#" to toggle frame logging 
+        frameData = !frameData;
+        logger.ID_all = false;
+        header = false;
+        while (Serial.available() > 0 ) //empty the buffer
+        int trash = Serial.read();
       }
       else {
-        Serial.print(message.data[i], DEC);
-      }
+        logger.ID_all = false;
+        logger.ID = loggerID(val, false); // Type a frame ID in hex to log that frame only
       
     }
-    Serial.print("  ");
-    Serial.print("MAP: ");
-    Serial.print(MAP_volts);
-    Serial.print("  "); 
-    Serial.print("IAT: ");
-    Serial.print(IAT_volts);
-    Serial.print("  ");
-    Serial.print("RPM: ");
-    Serial.print(CANdata.rpm);
-    Serial.print("  ");
-    Serial.print("Thr: ");
-    Serial.print(CANdata.throttle);
-    Serial.println();
+    }
+    if (logger.logger && (message.identifier == logger.ID || logger.ID_all) && !frameData) {
+      if (millis() - timer1 > settings.logRate) {
+        timer1 = millis();
+      double time = millis() / 10;
+      time = round(time);
+      time = time/100;
+      Serial.print(time);
+      Serial.print("  ");
+      Serial.print("ID: ");
+      Serial.print("0x");
+      Serial.print(message.identifier, HEX);
+      Serial.print("\t");
+      for(int i=0;i<8;i++) 
+      { 
+        Serial.print("  ");
+        if (i >= message.data_length_code) {
+          Serial.print("X");
+        }
+        else {
+          Serial.print(message.data[i], DEC);
+        }
+        
+      }
+      Serial.print("  ");
+  
+      Serial.print(MAP_volts);
+      Serial.print("  "); 
+
+      Serial.print(IAT_volts);
+      Serial.print("  ");
+
+      Serial.print(CANdata.rpm);
+      Serial.print("  ");
+      Serial.print(CANdata.throttle);
+      Serial.println();
+      }
+    }
+    /////////////////////////////////////////////////////////////////////
+    //////// Logging specific frames together //////////////////////////
+    else if (frameData){
+      int numFrames = logFrames.Frames.size();
+      for (int i = 0; i < numFrames; i++) {
+        if (logFrames.Frames[i] == message.identifier) {
+          /// 16 bit frame
+          if (logFrames.size[i] == 16) {
+            int data = message.data[logFrames.startByte[i + 1]] << 8 || message.data[logFrames.startByte[i]];
+            /// apply 12 bit mask if applicable
+            if (logFrames.mask[i]) {
+              logFrames.data[i] = data & 0x0FFF;
+            }
+            
+          }
+          /// 8 bit frame
+          else {
+            logFrames.data[i] = message.data[logFrames.startByte[i]];
+          }            
+        }
+      }
+      if (millis() - timer2 > 95) {
+        timer2 = millis();
+        if (!header) {
+          for (int i = 0; i < numFrames; i++) {
+            Serial.print("0x");
+            Serial.print(logFrames.Frames[i], HEX);
+            Serial.print("  ");
+          }
+          Serial.print("MAP");
+          Serial.print("  ");
+          Serial.print("IAT");
+          Serial.print("  ");
+          Serial.print("RPM");
+          Serial.print("  ");
+          Serial.print("Thr");
+          Serial.print("  ");
+          Serial.println();
+          header = true;
+        }
+        for (int i = 0; i < numFrames; i++) {
+          Serial.print(logFrames.data[i], DEC);
+          Serial.print("  ");
+        }
+        Serial.print("  ");
+        Serial.print(MAP_volts);
+        Serial.print("  ");
+        Serial.print(IAT_volts);
+        Serial.print("  ");
+        Serial.print(CANdata.rpm);
+        Serial.print("  ");
+        Serial.print(CANdata.throttle);
+        Serial.println(); 
+      }
+    }
   }
 }
-}
-}
-    
-
 

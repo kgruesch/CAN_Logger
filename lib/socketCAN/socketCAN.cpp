@@ -69,7 +69,7 @@ void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data)
             break;
 
         case speedID:
-            data.speed = (frame[3] << 8 | frame[2]) / 100;
+            data.speed = (frame[3] << 8 | frame[2]) / 100; // MPH
             break;
 
         case cruiseID:
@@ -77,7 +77,7 @@ void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data)
             break;
 
         case ethanolID:
-            data.ethContent = frame[0]; //%
+            data.ethContent = frame[0]; // %
             data.fuelTemp = frame[1] - 40;
             break;
 
@@ -91,8 +91,15 @@ void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data)
 
         case gyroID:
             data.gyro = (frame[3] << 8 | frame[2]) *0.005 - 163.84; // in degrees/s
+            break;
+
+        case brakeID:
+            calc = (frame[3] << 8 | frame[2]);
+            data.brake = (32000 -  calc) / 90; // % brake applied
+            break;
     }
 }
+
 
 void setAlerts(VehicleData& CANdata, Alerts& alerts, Settings& settings ) {
     alerts.oilWarning = (CANdata.oil_temp > settings.oil_warning_temp)? true : false;

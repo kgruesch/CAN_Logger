@@ -13,6 +13,8 @@
 #define colorAddr             160
 #define SSIDAddr              160
 #define passwordAddr          180
+#define sendRateID            200
+#define logRateID             220
 #define modeUp                GPIO_NUM_4
 #define modeDown              GPIO_NUM_5
 #define DSC                   GPIO_NUM_6
