@@ -7,6 +7,8 @@
 #include "TX_RX.h"
 #include "SocketCAN.h"
 #include <stdlib.h>
+#define SDA 8
+#define SCL 9
 
 // put function declarations here:
 int ID;
@@ -133,8 +135,10 @@ void loop()
         if (logFrames.Frames[i] == message.identifier) {
           /// 16 bit frame
           if (logFrames.size[i] == 16) {
-            int data = message.data[logFrames.startByte[i + 1]] << 8 || message.data[logFrames.startByte[i]];
-            /// apply 12 bit mask if applicable
+            int startByte = logFrames.startByte[i];
+            uint16_t data = message.data[startByte + 1] << 8 | message.data[startByte];
+            logFrames.data[i] = data;
+            // apply 12 bit mask if applicable
             if (logFrames.mask[i]) {
               logFrames.data[i] = data & 0x0FFF;
             }
@@ -146,12 +150,17 @@ void loop()
           }            
         }
       }
-      if (millis() - timer2 > 95) {
+      if (millis() - timer2 > 93) {
         timer2 = millis();
+        
         if (!header) {
+          Serial.print("Time");
+          Serial.print("  ");
           for (int i = 0; i < numFrames; i++) {
             Serial.print("0x");
             Serial.print(logFrames.Frames[i], HEX);
+            Serial.print("-");
+            Serial.print(logFrames.startByte[i]);
             Serial.print("  ");
           }
           Serial.print("MAP");
@@ -165,6 +174,9 @@ void loop()
           Serial.println();
           header = true;
         }
+        double timestamp = millis();
+        Serial.print(timestamp/1000);
+        Serial.print("  ");
         for (int i = 0; i < numFrames; i++) {
           Serial.print(logFrames.data[i], DEC);
           Serial.print("  ");

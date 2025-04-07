@@ -7,6 +7,7 @@
 #include "TX_RX.h"
 #include "drive_mode.h"
 
+
 void CAN_start(int version) // arg is board version, some pins change between the 2
 {   gpio_num_t GPIO_TX;
     gpio_num_t GPIO_RX;
@@ -82,15 +83,15 @@ void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data)
             break;
 
         case accel_yID:
-            data.accel_y = (frame[3] << 8 | frame[2]) *0.008 - 65; // in m/s²
+            data.accel_y = ((frame[3] << 8 | frame[2]) / 500 - 65) / 9.81; // in g's
             break;
 
         case accel_xID:
-            data.accel_x = (frame[3] << 8 | frame[2]) *0.008 - 65; // in m/s²
+            data.accel_x = ((frame[3] << 8 | frame[2]) / 500 - 65) / 9.81; // in g's
             break;
 
         case gyroID:
-            data.gyro = (frame[3] << 8 | frame[2]) *0.005 - 163.84; // in degrees/s
+            data.gyro = (frame[3] << 8 | frame[2]) / 200 - 163.84; // in degrees/s
             break;
 
         case brakeID:

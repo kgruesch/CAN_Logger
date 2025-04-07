@@ -83,8 +83,8 @@ struct PreviousData {
 };
 
 struct FrameLogging {
-    std::vector<int> Frames {0x314, 0x302, 0x18D, 0x163, 0x08F, 0x0DC, 0x2C5, 0x2C4, 0x281, 0x0FC};
-    std::vector<int> startByte {2, 2, 0, 4, 2, 3, 2, 5, 0, 1};
+    std::vector<int> Frames {0x314, 0x302, 0x18D, 0x163, 0x08F, 0x0DC, 0x2C5, 0x2C4, 0x281, 0x0F3};
+    std::vector<int> startByte {2, 2, 0, 6, 2, 3, 2, 5, 0, 1};
     std::vector<int> size {8, 16, 16, 16, 16, 16, 16, 8, 8, 16};
     std::vector<int> mask {false, false, true, false, false, false, false, false, false, false};
     std::vector<int> data {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
