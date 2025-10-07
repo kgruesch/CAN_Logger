@@ -291,6 +291,10 @@ unsigned long timer2 = 0;
 unsigned long timer3 = 0;
 VehicleData CANdata;
 Settings settings;
+Alerts alerts;
+PreviousData prevData;
+Flags flags;
+Timers timers;
 FrameLogging logFrames;
 
 typedef struct ESPNOWData {
@@ -306,80 +310,11 @@ TaskHandle_t SensorTask;
 
 void OnDataRecv(const uint8_t *mac, const uint8_t *data, int len) {
   memcpy(&ESPNOWData, data, sizeof(ESPNOWData));
+  ESPNOWData.boost_mBar -= CANdata.ambient_mBar;
   commsStarted = true;
   neopixelWrite(21, BLUE);
   reconnectTimer = millis();
 }
-
-void CANReadLoop(void *parameter) {
-  twai_message_t message;
-  while (true) {
-    twai_message_t message;
-  if (twai_receive(&message, pdMS_TO_TICKS(1)) == ESP_OK) {
-    uint8_t payload[8];
-    uint8_t len = message.data_length_code;
-    memcpy(payload, message.data, len);
-    CANUpdate(message.identifier, payload, len, message.extd, CANdata);
-    setAlerts(CANdata, alerts, settings);
-    static unsigned long lastCANTime = 0;
-    lastCANTime = millis(); 
-  }
-      /// If logging all IDs, throttle printing to not crash terminal
-      if (logger.logger && logger.ID_all && !frameData) {
-        if (millis() - timer1 > 5) {
-          timer1 = millis();
-          double time = round(millis() / 10.0) / 100;
-          Serial.printf("%.3f  ID: 0x%X\t", time, message.identifier);
-          for (int i = 0; i < 8; i++) {
-            Serial.print(i >= message.data_length_code ? " X" : String(message.data[i]));
-            Serial.print("  ");
-          }
-          // Serial.printf("%.3f  %.3f  %d  %d\n", read_ADS(2), read_ADS(1), CANdata.rpm, CANdata.throttle);
-        }
-      } 
-      /// If logging single frame, print every time one is received///////
-        else if (logger.logger && message.identifier == logger.ID && !logger.ID_all && !frameData) { 
-          double time = round(millis() / 10.0) / 100;
-          Serial.printf("%.3f  ID: 0x%X\t", time, message.identifier);
-          for (int i = 0; i < 8; i++) {
-            Serial.print(i >= message.data_length_code ? " X" : String(message.data[i]));
-            Serial.print("  ");
-          }
-          Serial.printf("%.3f  %.3f  %d  %d\n", ESPNOWData.boost_mBar, ESPNOWData.IAT_volts, CANdata.rpm, CANdata.throttle);
-        }
-       else if (frameData) {
-        int numFrames = logFrames.Frames.size();
-        for (int i = 0; i < numFrames; i++) {
-          if (logFrames.Frames[i] == message.identifier) {
-            int startByte = logFrames.startByte[i];
-            if (logFrames.size[i] == 16) {
-              uint16_t data = message.data[startByte + 1] << 8 | message.data[startByte];
-              logFrames.data[i] = logFrames.mask[i] ? data & 0x0FFF : data;
-            } else {
-              logFrames.data[i] = message.data[startByte];
-            }
-          }
-        }
-        if (millis() - timer2 > settings.logRate) {
-          timer2 = millis();
-          if (!header) {
-            Serial.print("Time  ");
-            for (int i = 0; i < numFrames; i++) {
-              Serial.printf("0x%X-%d  ", logFrames.Frames[i], logFrames.startByte[i]);
-            }
-            Serial.println("MAP  IAT  RPM  Thr");
-            header = true;
-          }
-          double timestamp = millis() / 1000.0;
-          Serial.printf("%.3f  ", timestamp);
-          for (int i = 0; i < numFrames; i++) Serial.printf("%d  ", logFrames.data[i]);
-          Serial.printf("%.2f  %.2f  %d  %d\n", ESPNOWData.boost_mBar, ESPNOWData.IAT_volts, CANdata.rpm, CANdata.throttle);
-        }
-      }
-    }
-    vTaskDelay(1);
-  }
-
 
 void setup() {
   neopixelWrite(21, OFF);
@@ -423,8 +358,6 @@ if (!esp_now_is_peer_exist(broadcastPeer.peer_addr)) {
 }
   
   WiFi.macAddress(macAddr);
-
-  xTaskCreatePinnedToCore(CANReadLoop, "CAN Reader", 8192, NULL, 1, &CANReaderTask, 1);
 }
 
 void loop() {
@@ -441,6 +374,7 @@ void loop() {
     }
     delay(50);
   }
+
   if (Serial.available() > 0) {
     int val = Serial.read();
     if (val == 32) { //space bar
@@ -464,4 +398,69 @@ void loop() {
     }
     while (Serial.available() > 0) Serial.read(); // clear buffer
   }
+
+  twai_message_t message;
+  if (twai_receive(&message, pdMS_TO_TICKS(1)) == ESP_OK) {
+    uint8_t payload[8];
+    uint8_t len = message.data_length_code;
+    memcpy(payload, message.data, len);
+    CANUpdate(message.identifier, payload, len, message.extd, CANdata);
+    setAlerts(CANdata, alerts, settings);
+    static unsigned long lastCANTime = 0;
+    lastCANTime = millis(); 
+  }
+  /// If logging all IDs, throttle printing to not crash terminal
+  if (logger.logger && logger.ID_all && !frameData) {
+    if (millis() - timer1 > 5) {
+      timer1 = millis();
+      double time = round(millis() / 10.0) / 100;
+      Serial.printf("%.3f  ID: 0x%X\t", time, message.identifier);
+      for (int i = 0; i < 8; i++) {
+        Serial.print(i >= message.data_length_code ? " X" : String(message.data[i]));
+        Serial.print("  ");
+      }
+      Serial.printf("%.3f  %.3f  %d  %d\n", ESPNOWData.boost_mBar, ESPNOWData.IAT_volts, CANdata.rpm, CANdata.throttle);
+    }
+  } 
+      /// If logging single frame, print every time one is received///////
+  else if (logger.logger && message.identifier == logger.ID && !logger.ID_all && !frameData) { 
+    double time = round(millis() / 10.0) / 100;
+    Serial.printf("%.3f  ID: 0x%X\t", time, message.identifier);
+    for (int i = 0; i < 8; i++) {
+      Serial.print(i >= message.data_length_code ? " X" : String(message.data[i]));
+      Serial.print("  ");
+    }
+    Serial.printf("%.3f  %.3f  %d  %d\n", ESPNOWData.boost_mBar, ESPNOWData.IAT_volts, CANdata.rpm, CANdata.throttle);
+  }
+  else if (frameData) {
+  int numFrames = logFrames.Frames.size();
+  for (int i = 0; i < numFrames; i++) {
+    if (logFrames.Frames[i] == message.identifier) {
+      int startByte = logFrames.startByte[i];
+      if (logFrames.size[i] == 16) {
+        uint16_t data = message.data[startByte + 1] << 8 | message.data[startByte];
+        logFrames.data[i] = logFrames.mask[i] ? data & 0x0FFF : data;
+      } else {
+        logFrames.data[i] = message.data[startByte];
+      }
+    }
+  }
+  if (millis() - timer2 > settings.logRate) {
+    timer2 = millis();
+    if (!header) {
+      Serial.print("Time  ");
+      for (int i = 0; i < numFrames; i++) {
+        Serial.printf("0x%X-%d  ", logFrames.Frames[i], logFrames.startByte[i]);
+      }
+      Serial.println("MAP  IAT  RPM  Thr");
+      header = true;
+    }
+    double timestamp = millis() / 1000.0;
+    Serial.printf("%.3f  ", timestamp);
+    for (int i = 0; i < numFrames; i++) Serial.printf("%d  ", logFrames.data[i]);
+    Serial.printf("%.2f  %.2f  %d  %d\n", ESPNOWData.boost_mBar, ESPNOWData.IAT_volts, CANdata.rpm, CANdata.throttle);
+    }
+  }
+      commsStarted = millis() - reconnectTimer > 500 ? false : commsStarted;
 }
+  

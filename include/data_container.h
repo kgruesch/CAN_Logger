@@ -25,7 +25,6 @@ struct Settings {
 };
 
 
-
 struct Alerts {
     bool 
         shiftReminder {false}, oilWarning {false}, coolWarning {false}, coldEngine {false}, shiftLight {false}, lightsOn {false};
