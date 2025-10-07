@@ -7,12 +7,12 @@
 #define shiftLightAddr        40
 #define dimmerAddr            60
 #define oil_warnAddr          80
-#define oil_dangerAddr        100
-#define isDisplayAddr         120
+#define coolant_warnAddr      100
+#define tireTypeAddr          120
 #define reminderAddr          140
 #define colorAddr             160
 #define SSIDAddr              160
-#define passwordAddr          180
+#define passwordAddr          180 
 #define sendRateID            200
 #define logRateID             220
 #define modeUp                GPIO_NUM_4
@@ -59,7 +59,11 @@ bool writeToEEPROM(int addr, int data);
 
 void printStartInfo(int startModeType, int StartMode);
 
+void checkModeToggle();
+
 String mode2string(int &modeData);
+
+
 
 #endif
 

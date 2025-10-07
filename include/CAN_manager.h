@@ -1,11 +1,13 @@
-#ifndef CAN_DATA_H // 
-#define CAN_DATA_H // 
+#ifndef CAN_MANAGER_H // 
+#define CAN_MANAGER_H // 
 
 #include "drive_mode.h"
 #include <vector>
-#include <stdlib.h>
+#include "data_container.h"
+#include "globals.h"
 
-// CAN frame IDs
+
+
 // CAN frame IDs
 #define rpmID       0x0A5 // 16 bit, 2 bytes, rpm = value / 4
 #define temps       0x3F9 // water temp byte 4, oil temp byte 5: °C = value - 48
@@ -30,6 +32,7 @@
 #define cruiseStatus 0x289 // 8 bit, Byte 2: 0xE0 = Cruise Off, 0x28 = Cruise On, 0x2A = Cruise Set
 #define Pressure_ID 0x3FB // 8 bits, Byte 0: Ambient pressure, mBar = value * 2 + 598
 
+
 // Neopixel colors
 #define red     "#fc0505"
 #define green   "#0cf54a"
@@ -37,54 +40,15 @@
 #define white   "#f7f8fa"
 #define black   "#000000"
 
-struct VehicleData {
-    int rpm {0};
-    int gear {0};
-    int water_temp {60};
-    int oil_temp {60};
-    int gearbox_temp {25};
-    int illumination {0};
-    int throttle {0};
-    int modeData {0x19};
-    int shift_Mode {0};
-    int speed {0};
-    int ethContent {0};
-    int fuelTemp {0};
-    int tachometer {0};
-    int brake {0};
-    float accel_y {0};
-    float accel_x {0};
-    float gyro {0};
-    bool crzResume {false};
-    String gearString {"P"};
-    String driveMode {"Comfort"};
-};
+void CAN_start(int version);
 
-struct Settings {
-    int oil_warning_temp        {120};
-    int oil_danger_temp         {130};
-    int shiftLightRPM           {5500};
-    int startType               {true};
-    int startMode               {SPORT};
-    int shift_reminder_ms       {5000};
-    int sendRate                {100};
-    int logRate                 {10};
-};
+void CANUpdate(uint32_t id,
+               const uint8_t* data,   // raw pointer to payload
+               uint8_t         len,    // DLC (0–8)
+               bool            extd,   // add the ext-ID flag while you’re here
+               VehicleData&        out);
 
-struct Alerts {
-    bool shiftReminder {false};
-    bool oilWarning {false};
-    bool oilDanger {false};
-    bool coldEngine {false};
-    bool shiftLight {false};
-    bool lightsOn {false};
-};
-
-struct PreviousData {
-    int     last_gear {0},
-            lastDriveMode {19},  
-            lastRPM {0};
-};
+void setAlerts(VehicleData& data, Alerts& alerts, Settings& settings);
 
 struct FrameLogging {
     std::vector<int> Frames {0x314, 0x302, 0x18D, 0x163, 0x08F, 0x0DC, 0x2C5, 0x2C4, 0x281, 0x0F3};
@@ -93,11 +57,5 @@ struct FrameLogging {
     std::vector<int> mask {false, false, true, false, false, false, false, false, false, false};
     std::vector<int> data {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 };
-
-void CAN_start(int version);
-
-void CANUpdate(int frameID, std::vector<int>& frame, VehicleData& data);
-
-void setAlerts(VehicleData& data, Alerts& alerts, Settings& settings);
 
 #endif
