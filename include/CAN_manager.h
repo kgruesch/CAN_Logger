@@ -12,7 +12,7 @@
 #define rpmID       0x0A5 // 16 bit, 2 bytes, rpm = value / 4
 #define temps       0x3F9 // water temp byte 4, oil temp byte 5: °C = value - 48
 #define gearTemp    0x39A // 8 bit, Byte 1, °C = value / - 40
-#define gearID      0x0F3 // 4 bit, byte 5, gear = value - 4
+#define gearID      0x0F3 // 12 bit, Byte 1, Tachometer = value * 0.688; 4 bit, byte 5, gear = value - 4
 #define lightID     0x202 // 8 bit, byte 1, 0xFE if interior lighting is off, 0-253 brightness value otherwise
 #define modeID      0x3A7 // 8bit, byte 4, hex values: 0x47= ECO, 0x13= COMFORT, 0x14= SPORT, 0x25= SPORT+, 0x11= TRAC, 0x26= DSC OFF
 #define parkID      0x197 // boolean, byte 3, 0xD5 if park button is pressed,0x0C if not pressed, 

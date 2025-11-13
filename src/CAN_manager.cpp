@@ -50,7 +50,7 @@ void CANUpdate(uint32_t frameID,
         case gearID:
             data.gear = (frame[5] & 0x0F) - 4; // gear, 4-bit 50Hz
             x = frame[2] << 8 | (frame[1]);
-            data.tachometer = round(x * 0.654); // 16-bit value, 0-65536
+            data.tachometer = round(x * 0.6288); // 16-bit value, 0-65536
             break;
 
         case temps:
@@ -61,6 +61,8 @@ void CANUpdate(uint32_t frameID,
         case rpmID: // 16bit 
             x = frame[6] << 8 | (frame[5]);
             data.rpm = round(x / 4); // 16-bit value, 0-65536
+            data.torque_E = ((frame[3] << 8) | frame[2]) & 0x0FFF;
+            data.torque_G = (((frame[4] << 8) | frame[3]) >> 4) & 0x0FFF;
             break;
             
         case gearTemp:
@@ -105,7 +107,7 @@ void CANUpdate(uint32_t frameID,
 
         case ethanolID:
             data.ethContent = frame[0]; //%
-            data.fuelTemp   = frame[1] - 40;
+            data.fuelTemp   = frame[1] - 40; //°C
             break;
 
         case accel_yID:
@@ -134,7 +136,7 @@ void CANUpdate(uint32_t frameID,
             } 
             
             value = (frame[3] << 8 | frame[2]);
-            data.brake = (32000-value) / 70;
+            data.brake = (31875-value) / 70;
             prevData.brake  = data.brake;
             data.brake = (data.brake <= 1) ? 0 : data.brake;
             break;
@@ -145,7 +147,7 @@ void CANUpdate(uint32_t frameID,
 
         case Pressure_ID:
             data.ambient_mBar = frame[0] * 2 + 598;
-            Serial.println(data.ambient_mBar);
+            // Serial.println(data.ambient_mBar);
             break;
     }
     

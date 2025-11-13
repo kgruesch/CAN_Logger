@@ -9,6 +9,6 @@ struct Logging{
             ID_all {false};
 };
 
-int loggerID(int val, bool logRate);
+int handleSerialCommands();
 
 #endif  

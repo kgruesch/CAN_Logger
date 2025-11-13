@@ -8,7 +8,8 @@
 struct VehicleData {
     int 
         rpm {0}, gear {0}, water_temp {60}, oil_temp {60}, gearbox_temp {25}, illumination{0}, throttle {0}, 
-        modeData {0x19}, shift_Mode {0}, ethContent {0}, fuelTemp {0}, tachometer {0}, brake {0}, ambient_mBar;
+        modeData {0x19}, shift_Mode {0}, ethContent {0}, fuelTemp {0}, tachometer {0}, brake {0}, ambient_mBar {0},
+        torque_E {0}, torque_G {0};
     float 
         speed {0}, accel_y {0}, accel_x {0}, gyro {0}, boost {0}, IAT_volts {0}, Oil_pressure {0}, aux_volts {0};
     bool  
