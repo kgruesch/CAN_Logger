@@ -121,7 +121,7 @@ void loop() {
     neopixelWrite(21, logger.logger? BLUE : OFF);
   }
   else if (input > 0) {
-    ID = input;
+    logger.ID = input;
   }
 
   twai_message_t message;
